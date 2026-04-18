@@ -103,8 +103,8 @@ class NotebookLMClient:
             raise NotebookLMError("add_web_sources called with empty URL list")
         endpoint = f"{self._parent()}/notebooks/{notebook_id}/sources:batchCreate"
         body = {
-            "sources": [
-                {"webSource": {"url": u}, "displayName": u} for u in url_list
+            "userContents": [
+                {"webContent": {"webUrl": u}} for u in url_list
             ]
         }
         resp = self._client.post(
