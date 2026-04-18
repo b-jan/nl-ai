@@ -1,0 +1,25 @@
+[project]
+name = "tldr-podcast"
+version = "0.1.0"
+description = "Podcast quotidien en français résumant la newsletter TLDR AI via NotebookLM Enterprise."
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.27",
+    "selectolax>=0.3.21",
+    "google-auth>=2.30",
+    "feedgen>=1.0.0",
+    "mutagen>=1.47",
+    "tenacity>=9.0",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.4",
+]
+
+[project.scripts]
+tldr-podcast = "tldr_podcast.main:cli"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tldr_podcast"]
