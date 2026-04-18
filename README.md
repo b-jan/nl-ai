@@ -108,7 +108,7 @@ GitHub Pages (RSS). Scheduler : Claude Code Routines.
 | Variable | Obligatoire | Défaut | Rôle |
 | --- | --- | --- | --- |
 | `GCP_PROJECT_ID` | oui | — | project id GCP |
-| `GCP_LOCATION` | non | `us-central1` | région NotebookLM |
+| `GCP_LOCATION` | non | `global` | région NotebookLM |
 | `GCP_SA_JSON` | oui | — | JSON service-account (base64 ou brut) |
 | `GITHUB_TOKEN` | oui | — | PAT fine-grained scoped au repo |
 | `GITHUB_OWNER` | non | `b-jan` | owner du repo |

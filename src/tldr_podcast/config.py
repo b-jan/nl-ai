@@ -16,7 +16,7 @@ class Settings(BaseSettings):
 
     # GCP / NotebookLM
     gcp_project_id: str = Field(..., alias="GCP_PROJECT_ID")
-    gcp_location: str = Field("us-central1", alias="GCP_LOCATION")
+    gcp_location: str = Field("global", alias="GCP_LOCATION")
     gcp_sa_json_b64: str = Field(..., alias="GCP_SA_JSON")
 
     # GitHub
