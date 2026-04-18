@@ -1,4 +1,4 @@
-"""End-to-end orchestration: scrape TLDR → NotebookLM → Release → RSS → git push."""
+"""End-to-end orchestration: scrape TLDR → Podcast API → Release → RSS → git push."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from mutagen.mp3 import MP3
 
 from . import feed, release, state, tldr_scraper
 from .config import Settings, get_settings
-from .notebooklm import NotebookLMClient
+from .notebooklm import PodcastClient
 from .tldr_scraper import Article, IssueNotPublished
 
 logger = logging.getLogger(__name__)
@@ -56,6 +56,13 @@ def _episode_focus(articles: list[Article]) -> str:
         "mettant en perspective les enjeux IA : "
         f"{titles}"
     )
+
+
+def _article_context(a: Article) -> str:
+    parts = [f"Titre : {a.title}", f"Source : {a.url}"]
+    if a.summary:
+        parts.append(f"Résumé : {a.summary}")
+    return "\n".join(parts)
 
 
 def _mp3_metadata(path: Path) -> tuple[int, int]:
@@ -133,24 +140,22 @@ def run_daily(
 
     summary = _build_summary(articles)
 
-    # 2. NotebookLM: generate French audio overview
-    with NotebookLMClient(
+    # 2. Podcast API: generate French audio podcast
+    with PodcastClient(
         project_id=settings.gcp_project_id,
-        location=settings.gcp_location,
         service_account_info=settings.service_account_info,
-        impersonated_user=settings.podcast_owner_email,
-    ) as nlm:
-        notebook_id = nlm.create_notebook(f"TLDR AI {date.isoformat()} FR")
-        nlm.add_web_sources(notebook_id, [a.url for a in articles])
-        op = nlm.start_audio_overview(
-            notebook_id,
+    ) as client:
+        op = client.create_podcast(
+            title=f"TLDR AI {date.isoformat()} FR",
+            contexts=[_article_context(a) for a in articles],
+            focus=_episode_focus(articles),
             language_code="fr-FR",
-            episode_focus=_episode_focus(articles),
+            length="SHORT",
         )
-        result = nlm.poll_until_done(op)
+        client.poll_until_done(op)
 
         mp3_path = audio_output or Path(tempfile.gettempdir()) / f"tldr-ai-{date}.mp3"
-        nlm.download_audio(result.audio_uri, mp3_path)
+        client.download_audio(op, mp3_path)
 
     duration_s, size_bytes = _mp3_metadata(mp3_path)
     episode_title = f"TLDR AI — {date.strftime('%d/%m/%Y')}"

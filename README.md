@@ -12,8 +12,8 @@ Claude Code Routine (17h00 Europe/Paris, daily)
         │ clone repo + run python -m tldr_podcast.main
         ▼
   1. Scrape tldr.tech/ai/YYYY-MM-DD → top 6 articles
-  2. NotebookLM Enterprise API : create notebook, add web sources,
-     start audio overview FR (~6 min), poll, download MP3
+  2. NotebookLM Enterprise Podcast API : submit article contexts,
+     poll long-running operation, download MP3
   3. Upload MP3 → GitHub Release (tag = ep-YYYY-MM-DD)
   4. Append episode → feed/episodes.json
   5. Regenerate feed/rss.xml (feedgen + iTunes extension)
@@ -32,28 +32,25 @@ GitHub Pages (RSS). Scheduler : Claude Code Routines.
 
 ## Coûts estimés
 
-- NotebookLM Enterprise : 9 $/licence/mois (1 suffit)
-- Gemini API tokens par audio overview : ~0,05–0,15 $/épisode
+- Podcast API (discoveryengine) : ~0,05–0,15 $/épisode selon la facturation Gemini Enterprise
 - GitHub Releases + Pages : gratuit
 - Spotify for Creators : gratuit
 - Claude Code Routines : inclus dans le plan Pro/Max/Team
-- **Total ≈ 11–14 $/mois**
+- **Total ≈ quelques $/mois**
 
 ## Setup manuel (one-time)
 
-1. **Licence NotebookLM Enterprise.** Dans l'admin Google Workspace, attribue
-   une licence NotebookLM Enterprise (9 $/mois) à l'utilisateur associé au
-   service-account que tu vas créer ci-dessous.
+1. **Activer la Podcast API.** Dans le projet GCP, active l'API
+   `discoveryengine.googleapis.com` (Gemini Enterprise > Discovery Engine).
+   Aucune licence NotebookLM ni utilisateur Workspace requis — la Podcast API
+   est standalone.
 
 2. **Service-account GCP.**
    ```bash
    gcloud iam service-accounts create tldr-podcast-bot
    gcloud projects add-iam-policy-binding $GCP_PROJECT_ID \
      --member="serviceAccount:tldr-podcast-bot@$GCP_PROJECT_ID.iam.gserviceaccount.com" \
-     --role="roles/notebooklm.user"
-   gcloud projects add-iam-policy-binding $GCP_PROJECT_ID \
-     --member="serviceAccount:tldr-podcast-bot@$GCP_PROJECT_ID.iam.gserviceaccount.com" \
-     --role="roles/aiplatform.user"
+     --role="roles/discoveryengine.podcastApiUser"
    gcloud iam service-accounts keys create sa.json \
      --iam-account="tldr-podcast-bot@$GCP_PROJECT_ID.iam.gserviceaccount.com"
    base64 -w0 sa.json > sa.json.b64   # value for GCP_SA_JSON
@@ -75,7 +72,7 @@ GitHub Pages (RSS). Scheduler : Claude Code Routines.
 7. **Dry-run local** — vérifie le bout-à-bout sans rien publier :
    ```bash
    pip install -e .
-   export GCP_PROJECT_ID=... GCP_LOCATION=us-central1
+   export GCP_PROJECT_ID=...
    export GCP_SA_JSON="$(cat sa.json.b64)"
    export GITHUB_TOKEN=... PODCAST_OWNER_EMAIL=...
    python scripts/dry_run.py --date 2026-04-17 > /tmp/preview.rss.xml
@@ -100,15 +97,14 @@ GitHub Pages (RSS). Scheduler : Claude Code Routines.
     - Schedule : `0 17 * * *` (Europe/Paris)
     - Repo : `b-jan/nl-ai` branche `main`
     - Command : `pip install -e . && python -m tldr_podcast.main`
-    - Secrets : `GCP_PROJECT_ID`, `GCP_LOCATION`, `GCP_SA_JSON`,
-      `GITHUB_TOKEN`, `PODCAST_OWNER_EMAIL`
+    - Secrets : `GCP_PROJECT_ID`, `GCP_SA_JSON`, `GITHUB_TOKEN`,
+      `PODCAST_OWNER_EMAIL`
 
 ## Variables d'environnement
 
 | Variable | Obligatoire | Défaut | Rôle |
 | --- | --- | --- | --- |
 | `GCP_PROJECT_ID` | oui | — | project id GCP |
-| `GCP_LOCATION` | non | `global` | région NotebookLM |
 | `GCP_SA_JSON` | oui | — | JSON service-account (base64 ou brut) |
 | `GITHUB_TOKEN` | oui | — | PAT fine-grained scoped au repo |
 | `GITHUB_OWNER` | non | `b-jan` | owner du repo |
@@ -131,7 +127,7 @@ GitHub Pages (RSS). Scheduler : Claude Code Routines.
 │   ├── main.py          # orchestration : run_daily(date)
 │   ├── config.py        # pydantic settings depuis env
 │   ├── tldr_scraper.py  # fetch_issue(date) -> Issue
-│   ├── notebooklm.py    # create notebook, add sources, audio overview, download
+│   ├── notebooklm.py    # Podcast API client : create, poll, download MP3
 │   ├── release.py       # GitHub Release + asset upload
 │   ├── feed.py          # RSS iTunes-compliant
 │   └── state.py         # episodes.json (idempotence)
@@ -146,6 +142,6 @@ GitHub Pages (RSS). Scheduler : Claude Code Routines.
 
 - **404 TLDR AI** (week-end, jour férié US) → exit 0 propre.
 - **< 3 articles extraits** → exit ≠ 0 pour logger l'anomalie.
-- **Timeout polling NotebookLM** (>25 min) → raise, pas de publication partielle.
+- **Timeout polling Podcast API** (>25 min) → raise, pas de publication partielle.
 - **Idempotence** : `episodes.json` indexé par date ; rerun sur la même date est no-op.
 - `feed.rebuild` = fonction pure de `episodes.json`, déterministe.
