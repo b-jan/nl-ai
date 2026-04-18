@@ -145,7 +145,6 @@ def run_daily(
         op = nlm.start_audio_overview(
             notebook_id,
             language_code="fr-FR",
-            length="SHORT",
             episode_focus=_episode_focus(articles),
         )
         result = nlm.poll_until_done(op)
