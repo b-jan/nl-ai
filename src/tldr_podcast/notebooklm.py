@@ -123,13 +123,13 @@ class NotebookLMClient:
         notebook_id: str,
         *,
         language_code: str = "fr-FR",
-        length: str = "SHORT",
         episode_focus: str | None = None,
     ) -> str:
-        endpoint = f"{self._parent()}/notebooks/{notebook_id}/audioOverviews:create"
-        body: dict[str, Any] = {"languageCode": language_code, "length": length}
+        endpoint = f"{self._parent()}/notebooks/{notebook_id}/audioOverviews"
+        generation_options: dict[str, Any] = {"languageCode": language_code}
         if episode_focus:
-            body["episodeFocus"] = episode_focus
+            generation_options["episodeFocus"] = episode_focus
+        body: dict[str, Any] = {"generationOptions": generation_options}
         resp = self._client.post(
             endpoint,
             json=body,
