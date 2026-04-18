@@ -48,12 +48,13 @@ class NotebookLMClient:
         project_id: str,
         location: str,
         service_account_info: dict[str, Any],
+        impersonated_user: str,
         client: httpx.Client | None = None,
     ) -> None:
         self.project_id = project_id
         self.location = location
         self._creds = service_account.Credentials.from_service_account_info(
-            service_account_info, scopes=SCOPES
+            service_account_info, scopes=SCOPES, subject=impersonated_user
         )
         self._client = client or httpx.Client(timeout=60.0)
 

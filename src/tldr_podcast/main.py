@@ -138,6 +138,7 @@ def run_daily(
         project_id=settings.gcp_project_id,
         location=settings.gcp_location,
         service_account_info=settings.service_account_info,
+        impersonated_user=settings.podcast_owner_email,
     ) as nlm:
         notebook_id = nlm.create_notebook(f"TLDR AI {date.isoformat()} FR")
         nlm.add_web_sources(notebook_id, [a.url for a in articles])
