@@ -104,7 +104,7 @@ class NotebookLMClient:
         endpoint = f"{self._parent()}/notebooks/{notebook_id}/sources:batchCreate"
         body = {
             "userContents": [
-                {"webContent": {"webUrl": u}} for u in url_list
+                {"webContent": {"url": u}} for u in url_list
             ]
         }
         resp = self._client.post(
