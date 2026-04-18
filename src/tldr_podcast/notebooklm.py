@@ -18,8 +18,11 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 logger = logging.getLogger(__name__)
 
 SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
-BASE_HOST = "https://notebooklm.googleapis.com"
 API_VERSION = "v1alpha"
+
+
+def _host_for_location(location: str) -> str:
+    return f"https://{location}-discoveryengine.googleapis.com"
 
 
 class NotebookLMError(RuntimeError):
@@ -62,9 +65,12 @@ class NotebookLMClient:
             self._creds.refresh(Request())
         return {"Authorization": f"Bearer {self._creds.token}"}
 
+    def _host(self) -> str:
+        return _host_for_location(self.location)
+
     def _parent(self) -> str:
         return (
-            f"{BASE_HOST}/{API_VERSION}/projects/{self.project_id}"
+            f"{self._host()}/{API_VERSION}/projects/{self.project_id}"
             f"/locations/{self.location}"
         )
 
@@ -147,7 +153,7 @@ class NotebookLMClient:
         interval_s: int = 15,
     ) -> AudioOverviewResult:
         deadline = time.monotonic() + timeout_s
-        endpoint = f"{BASE_HOST}/{API_VERSION}/{operation_name}"
+        endpoint = f"{self._host()}/{API_VERSION}/{operation_name}"
         while time.monotonic() < deadline:
             resp = self._client.get(endpoint, headers=self._auth_header())
             if resp.status_code >= 400:
