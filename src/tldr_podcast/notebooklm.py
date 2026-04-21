@@ -21,7 +21,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 logger = logging.getLogger(__name__)
 
 SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
-API_VERSION = "v1"
+API_VERSION = "v1beta"
 HOST = "https://discoveryengine.googleapis.com"
 
 
