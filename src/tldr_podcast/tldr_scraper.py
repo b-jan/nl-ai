@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime as dt
 import logging
 import re
+import time
 from dataclasses import dataclass
 from typing import Iterable
 
@@ -14,7 +15,22 @@ from selectolax.parser import HTMLParser
 logger = logging.getLogger(__name__)
 
 BASE_URL = "https://tldr.tech/ai"
-USER_AGENT = "tldr-podcast-bot/0.1 (+https://github.com/b-jan/nl-ai)"
+USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/120.0.0.0 Safari/537.36"
+)
+# tldr.tech's edge returns 503 unless the request looks like a real browser
+# navigation; the Upgrade-Insecure-Requests header is the minimum required.
+DEFAULT_HEADERS = {
+    "User-Agent": USER_AGENT,
+    "Accept": (
+        "text/html,application/xhtml+xml,application/xml;q=0.9,"
+        "image/avif,image/webp,*/*;q=0.8"
+    ),
+    "Accept-Language": "en-US,en;q=0.5",
+    "Upgrade-Insecure-Requests": "1",
+}
 
 # Headings / section names we never want to include in the summary.
 SKIPPED_SECTIONS = {
@@ -136,17 +152,33 @@ def fetch_issue(date: dt.date, client: httpx.Client | None = None) -> Issue:
     owns_client = client is None
     client = client or httpx.Client(
         timeout=20.0,
-        headers={"User-Agent": USER_AGENT},
+        headers=DEFAULT_HEADERS,
         follow_redirects=True,
     )
     try:
-        response = client.get(url)
+        response = None
+        for attempt in range(5):
+            response = client.get(url)
+            if response.status_code == 404:
+                raise IssueNotPublished(
+                    f"TLDR AI not published for {date.isoformat()}"
+                )
+            if response.status_code < 500:
+                break
+            delay = 2**attempt
+            logger.warning(
+                "tldr.tech returned %s for %s (attempt %d/5), retrying in %ds",
+                response.status_code,
+                url,
+                attempt + 1,
+                delay,
+            )
+            time.sleep(delay)
     finally:
         if owns_client:
             client.close()
 
-    if response.status_code == 404:
-        raise IssueNotPublished(f"TLDR AI not published for {date.isoformat()}")
+    assert response is not None
     response.raise_for_status()
 
     html = HTMLParser(response.text)
